@@ -367,6 +367,106 @@
             color: var(--accent-primary);
         }
 
+
+        .ops-panel {
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 18px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+        }
+
+        .ops-card {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px;
+            min-height: 180px;
+        }
+
+        .ops-card h3 {
+            margin: 0 0 10px 0;
+            color: var(--accent-primary);
+            font-size: 0.95rem;
+            letter-spacing: 0.5px;
+        }
+
+        .voice-command-row, .marketplace-toolbar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .voice-command-row input, .marketplace-toolbar input {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .icon-btn {
+            flex: 0 0 auto;
+            padding: 11px 12px;
+            border-radius: 10px;
+        }
+
+        .intent-preview, .analysis-output, .tool-list {
+            margin-top: 10px;
+            font-size: 0.78rem;
+            color: var(--text-dim);
+            line-height: 1.45;
+        }
+
+        .drop-zone {
+            border: 1px dashed rgba(0, 242, 255, 0.35);
+            border-radius: 12px;
+            padding: 18px;
+            text-align: center;
+            color: var(--text-dim);
+            background: rgba(0, 242, 255, 0.03);
+            cursor: pointer;
+        }
+
+        .drop-zone.dragover {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+            background: rgba(0, 242, 255, 0.08);
+        }
+
+        .tool-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .tool-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .tool-meta strong { color: var(--text-main); }
+        .tool-meta span { font-size: 0.7rem; }
+
+        .mini-toggle {
+            border: 1px solid var(--border);
+            background: var(--glass);
+            color: var(--text-main);
+            border-radius: 999px;
+            padding: 5px 9px;
+            cursor: pointer;
+        }
+
+        .mini-toggle.enabled {
+            background: rgba(0, 255, 136, 0.16);
+            color: var(--success);
+            border-color: rgba(0, 255, 136, 0.35);
+        }
+
         @media (max-width: 480px) {
             #app-container {
                 width: 100vw;
@@ -402,6 +502,34 @@
                 <h3 style="color: white;">No Active Swarms</h3>
                 <p>Initialize your first autonomous venture to begin the expansion protocol.</p>
             </div>
+
+            <section class="ops-panel" id="ops-center">
+                <div class="ops-card">
+                    <h3>🎙️ Voice Operations Center</h3>
+                    <div class="voice-command-row">
+                        <input id="voice-command" type="text" placeholder="Create a lead generation swarm...">
+                        <button class="btn btn-secondary icon-btn" onclick="startVoiceCapture()" title="Speech to text">🎤</button>
+                        <button class="btn btn-primary icon-btn" onclick="deployVoiceCommand()" title="Deploy from intent">▶</button>
+                    </div>
+                    <div id="intent-preview" class="intent-preview">Voice → intent extraction → task graph → swarm deployment.</div>
+                </div>
+                <div class="ops-card">
+                    <h3>🧠 Multimodal Intelligence</h3>
+                    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('multimodal-file').click()">
+                        Drop screenshot, PDF, video, or notes here
+                    </div>
+                    <input id="multimodal-file" type="file" accept="image/*,.pdf,video/*,text/*" style="display:none" onchange="handleMultimodalFiles(this.files)">
+                    <div id="analysis-output" class="analysis-output">Outputs: summary, entities, recommendations, action items, and workflow tasks.</div>
+                </div>
+                <div class="ops-card">
+                    <h3>🧰 Tool Marketplace</h3>
+                    <div class="marketplace-toolbar">
+                        <input id="tool-search" type="text" placeholder="Search tools..." oninput="renderToolMarketplace()">
+                    </div>
+                    <div id="tool-list" class="tool-list"></div>
+                </div>
+            </section>
+
         </main>
 
         <div class="action-bar">
@@ -479,9 +607,11 @@
     </div>
 
     <script>
-        const APP_STORAGE_KEY = 'NEXUS_SWARM_V2';
+        const APP_STORAGE_KEY = 'NEXUS_SWARM_V3';
         let ventures = [];
         let globalRevenue = 0;
+        let marketplaceTools = createDefaultMarketplaceTools();
+        let multimodalArtifacts = [];
 
         const templates = [
             { name: "Neural Arbitrage", goal: "Scan cross-chain liquidity pools for 0.1% price discrepancies and execute flash loans." },
@@ -498,6 +628,7 @@
             loadData();
             populateTimeOptions();
             startGlobalSimulation();
+            initializeOperationsCenter();
         });
 
         function populateTimeOptions() {
@@ -560,23 +691,7 @@
                 return;
             }
 
-            const newVenture = {
-                id: Date.now(),
-                name,
-                goal,
-                budget,
-                time,
-                progress: 0,
-                status: 'Initializing',
-                revenue: 0,
-                agents: [
-                    { role: 'CEO', icon: '👔', active: true },
-                    { role: 'CTO', icon: '💻', active: true },
-                    { role: 'CMO', icon: '📣', active: false },
-                    { role: 'CFO', icon: '⚖️', active: false }
-                ],
-                logs: [`[SYSTEM] Swarm protocol initiated at ${time}...`]
-            };
+            const newVenture = createStructuredVenture(name, goal, budget, time, ['Plan', 'Research', 'Generate Solution', 'Validate', 'Deploy', 'Monitor']);
 
             ventures.push(newVenture);
             saveData();
@@ -595,15 +710,15 @@
             
             if(ventures.length === 0) {
                 empty.style.display = 'block';
-                container.innerHTML = '';
-                container.appendChild(empty);
+                container.querySelectorAll('.venture-card').forEach(card => card.remove());
+                if (!container.contains(empty)) container.prepend(empty);
                 updateGlobalStats();
                 return;
             }
 
             empty.style.display = 'none';
             
-            container.innerHTML = '';
+            container.querySelectorAll('.venture-card').forEach(card => card.remove());
             ventures.forEach(v => {
                 const card = document.createElement('div');
                 card.className = 'venture-card';
@@ -616,7 +731,7 @@
                             <div class="venture-title">${v.name}</div>
                             <div style="font-size: 0.7rem; color: var(--text-dim); max-width: 250px; line-height: 1.3;">${v.goal}</div>
                         </div>
-                        <div class="venture-status">${v.status}</div>
+                        <div class="venture-status">${v.statusText || v.status?.phase || v.status}</div>
                     </div>
                     <div style="font-size: 0.8rem; color: var(--text-dim);">
                         💰 $${parseFloat(v.revenue).toFixed(2)} | ⏰ ${v.time}
@@ -641,7 +756,7 @@
                     </div>
                 `;
                 
-                container.appendChild(card);
+                container.insertBefore(card, document.getElementById('ops-center'));
             });
             
             updateGlobalStats();
@@ -692,8 +807,126 @@
             }, 3000);
         }
 
+
+        function createDefaultMarketplaceTools() {
+            return [
+                { id: 'browser-tool', name: 'Browser', category: 'Browser', permissions: ['read'], enabled: true },
+                { id: 'github-tool', name: 'GitHub', category: 'GitHub', permissions: ['read', 'write'], enabled: false },
+                { id: 'notion-tool', name: 'Notion', category: 'Notion', permissions: ['read', 'write'], enabled: false },
+                { id: 'slack-tool', name: 'Slack', category: 'Slack', permissions: ['send'], enabled: false },
+                { id: 'email-tool', name: 'Email', category: 'Email', permissions: ['send', 'read'], enabled: false },
+                { id: 'database-tool', name: 'Database', category: 'Database', permissions: ['read', 'write'], enabled: false },
+                { id: 'search-tool', name: 'Search', category: 'Search', permissions: ['read'], enabled: true },
+                { id: 'ocr-tool', name: 'OCR', category: 'OCR', permissions: ['read:image'], enabled: true },
+                { id: 'image-analysis-tool', name: 'Image Analysis', category: 'Image Analysis', permissions: ['read:image'], enabled: true }
+            ];
+        }
+
+        function initializeOperationsCenter() {
+            wireDropZone();
+            renderToolMarketplace();
+        }
+
+        function extractIntent(command) {
+            const text = command.toLowerCase();
+            const action = text.includes('analyze') ? 'analyze' : text.includes('build') ? 'build' : text.includes('launch') ? 'launch' : 'create';
+            const domain = text.includes('tesla') ? 'Tesla earnings' : text.includes('landing') ? 'landing page' : text.includes('lead') ? 'lead generation' : command;
+            return {
+                action,
+                domain,
+                ventureName: `${domain.replace(/\b\w/g, c => c.toUpperCase())} Swarm`,
+                tasks: ['Extract intent', 'Create mission graph', 'Assign agents', 'Deploy swarm']
+            };
+        }
+
+        function deployVoiceCommand() {
+            const command = document.getElementById('voice-command').value.trim();
+            if (!command) return;
+            const intent = extractIntent(command);
+            document.getElementById('intent-preview').innerHTML = `<strong>Intent:</strong> ${intent.action} ${intent.domain}<br><strong>Graph:</strong> ${intent.tasks.join(' → ')}`;
+            ventures.push(createStructuredVenture(intent.ventureName, `Voice command: ${command}`, 100, 'Immediate', intent.tasks));
+            saveData();
+            renderVentures();
+        }
+
+        function startVoiceCapture() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                document.getElementById('intent-preview').textContent = 'Speech recognition is unavailable in this browser. Type a command instead.';
+                return;
+            }
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.onresult = event => {
+                document.getElementById('voice-command').value = event.results[0][0].transcript;
+                deployVoiceCommand();
+            };
+            recognition.start();
+        }
+
+        function createStructuredVenture(name, goal, budget, time, tasks = []) {
+            return {
+                id: crypto.randomUUID ? crypto.randomUUID() : Date.now(),
+                metadata: { name, objective: goal, createdAt: new Date().toISOString(), owner: 'operator' },
+                status: { phase: 'planning', progress: 0, health: 100, confidence: 0.95 },
+                budget: { maxTokens: 500000, maxSpend: Number(budget) || 100, currentSpend: 0 },
+                swarm: { agents: [], activeTasks: tasks, completedTasks: [], failedTasks: [] },
+                memory: { shortTerm: [], longTerm: [], vectorStore: [] },
+                analytics: { revenue: 0, roi: 0, tasksCompleted: 0 },
+                name, goal, budget, time, progress: 0, statusText: 'Planning', revenue: 0,
+                agents: [
+                    { role: 'Strategic Planner', icon: '🎯', active: true },
+                    { role: 'Research Agent', icon: '🔍', active: true },
+                    { role: 'Builder Agent', icon: '🔨', active: false },
+                    { role: 'Validator Agent', icon: '✓', active: false },
+                    { role: 'Operator Agent', icon: '⚙️', active: true }
+                ],
+                logs: [`[VOICE] ${goal}`, `[GRAPH] ${tasks.join(' → ') || 'Mission → Plan → Research → Validate'}`]
+            };
+        }
+
+        function wireDropZone() {
+            const zone = document.getElementById('drop-zone');
+            ['dragenter', 'dragover'].forEach(evt => zone.addEventListener(evt, event => { event.preventDefault(); zone.classList.add('dragover'); }));
+            ['dragleave', 'drop'].forEach(evt => zone.addEventListener(evt, event => { event.preventDefault(); zone.classList.remove('dragover'); }));
+            zone.addEventListener('drop', event => handleMultimodalFiles(event.dataTransfer.files));
+        }
+
+        function handleMultimodalFiles(files) {
+            [...files].forEach(file => {
+                const kind = file.type.startsWith('image/') ? 'image' : file.type === 'application/pdf' ? 'pdf' : file.type.startsWith('video/') ? 'video' : 'document';
+                const artifact = {
+                    id: `artifact_${Date.now()}`,
+                    name: file.name,
+                    kind,
+                    entities: [file.name.split('.')[0], kind],
+                    tasks: [`Summarize ${file.name}`, `Extract ${kind} action items`, 'Create agent workflow'],
+                    recommendations: [`Route to ${kind === 'image' ? 'Image Analysis + OCR' : kind === 'pdf' ? 'Document Intelligence' : kind === 'video' ? 'Video Understanding' : 'Research Agent'}`]
+                };
+                multimodalArtifacts.push(artifact);
+                document.getElementById('analysis-output').innerHTML = `<strong>${artifact.name}</strong><br>Entities: ${artifact.entities.join(', ')}<br>Tasks: ${artifact.tasks.join(' → ')}<br>Recommendation: ${artifact.recommendations[0]}`;
+            });
+            saveData();
+        }
+
+        function renderToolMarketplace() {
+            const filter = (document.getElementById('tool-search')?.value || '').toLowerCase();
+            const list = document.getElementById('tool-list');
+            if (!list) return;
+            list.innerHTML = marketplaceTools
+                .filter(tool => `${tool.name} ${tool.category}`.toLowerCase().includes(filter))
+                .map(tool => `<div class="tool-item"><div class="tool-meta"><strong>${tool.name}</strong><span>${tool.category} · ${tool.permissions.join(', ')}</span></div><button class="mini-toggle ${tool.enabled ? 'enabled' : ''}" onclick="toggleTool('${tool.id}')">${tool.enabled ? 'Enabled' : 'Enable'}</button></div>`)
+                .join('');
+        }
+
+        function toggleTool(id) {
+            marketplaceTools = marketplaceTools.map(tool => tool.id === id ? { ...tool, enabled: !tool.enabled } : tool);
+            saveData();
+            renderToolMarketplace();
+        }
+
         function saveData() {
-            localStorage.setItem(APP_STORAGE_KEY, JSON.stringify({ ventures, globalRevenue }));
+            localStorage.setItem(APP_STORAGE_KEY, JSON.stringify({ ventures, globalRevenue, marketplaceTools, multimodalArtifacts }));
         }
 
         function loadData() {
@@ -703,6 +936,8 @@
                     const data = JSON.parse(saved);
                     ventures = data.ventures || [];
                     globalRevenue = data.globalRevenue || 0;
+                    marketplaceTools = data.marketplaceTools || marketplaceTools;
+                    multimodalArtifacts = data.multimodalArtifacts || [];
                 } catch(e) {
                     console.error('Failed to load data', e);
                 }
@@ -714,6 +949,7 @@
             if(confirm('Reset all swarms?')) {
                 ventures = [];
                 globalRevenue = 0;
+                multimodalArtifacts = [];
                 saveData();
                 renderVentures();
             }
