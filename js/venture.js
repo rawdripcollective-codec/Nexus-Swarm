@@ -15,7 +15,7 @@ class Venture {
     };
 
     this.status = {
-      phase: 'planning', // planning -> research -> execution -> optimization -> complete
+      phase: 'planning',
       progress: 0,
       health: 100,
       confidence: 0.95
@@ -60,9 +60,7 @@ class Venture {
   }
 
   getAgent(roleOrId) {
-    return this.swarm.agents.find(
-      a => a.role === roleOrId || a.id === roleOrId
-    );
+    return this.swarm.agents.find(a => a.role === roleOrId || a.id === roleOrId);
   }
 
   addTask(task) {
@@ -103,7 +101,6 @@ class Venture {
 
     if (type === 'short-term') {
       this.memory.shortTerm.push(memoryEntry);
-      // Keep only recent short-term memories
       if (this.memory.shortTerm.length > 100) {
         this.memory.shortTerm.shift();
       }
@@ -157,7 +154,6 @@ class Venture {
   }
 }
 
-// Export for use in browser and Node.js
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = Venture;
 }
