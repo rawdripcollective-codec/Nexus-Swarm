@@ -843,7 +843,17 @@
             const command = document.getElementById('voice-command').value.trim();
             if (!command) return;
             const intent = extractIntent(command);
-            document.getElementById('intent-preview').innerHTML = `<strong>Intent:</strong> ${intent.action} ${intent.domain}<br><strong>Graph:</strong> ${intent.tasks.join(' → ')}`;
+            const intentPreview = document.getElementById('intent-preview');
+            intentPreview.textContent = '';
+            const intentLabel = document.createElement('strong');
+            intentLabel.textContent = 'Intent:';
+            intentPreview.appendChild(intentLabel);
+            intentPreview.appendChild(document.createTextNode(` ${intent.action} ${intent.domain}`));
+            intentPreview.appendChild(document.createElement('br'));
+            const graphLabel = document.createElement('strong');
+            graphLabel.textContent = 'Graph:';
+            intentPreview.appendChild(graphLabel);
+            intentPreview.appendChild(document.createTextNode(` ${intent.tasks.join(' → ')}`));
             ventures.push(createStructuredVenture(intent.ventureName, `Voice command: ${command}`, 100, 'Immediate', intent.tasks));
             saveData();
             renderVentures();
